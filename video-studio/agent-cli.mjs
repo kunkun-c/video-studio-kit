@@ -112,7 +112,8 @@ function spawnArgs(id, mode, { model, system, schema, prompt, promptDir, emptyMc
     case 'devin': {
       const f = promptFile(prompt, promptDir);
       const pm = mode === 'chat' ? 'auto' : (process.env.VS_PERMISSION_MODE || 'dangerous');
-      return { args: ['-p', ...(model ? ['--model', model] : []), '--permission-mode', pm, '--respect-workspace-trust=false', '--prompt-file', f] };
+      return { args: ['-p', ...(model ? ['--model', model] : []), '--permission-mode', pm, '--respect-workspace-trust=false', '--prompt-file', f],
+        cleanup: () => fs.unlink(f, () => {}) };
     }
     case 'gemini': {
       const args = [...(model ? ['-m', model] : [])];
@@ -136,7 +137,7 @@ function spawnArgs(id, mode, { model, system, schema, prompt, promptDir, emptyMc
 }
 
 function run(id, bin, mode, o) {
-  const { args, stdin } = spawnArgs(id, mode, o);
+  const { args, stdin, cleanup } = spawnArgs(id, mode, o);
   const child = sh(bin, args, { cwd: o.cwd, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ...o.env } });
   let buf = '', out = '', err = '', result = null;
   const done = new Promise((resolve, reject) => {
@@ -153,6 +154,7 @@ function run(id, bin, mode, o) {
     child.on('error', (e) => reject(new Error(`could not start ${SPECS[id].label}: ${e.message}`)));
     child.on('close', (code) => {
       if (id === 'claude' && !result && buf.trim()) { try { result = JSON.parse(buf.trim()); } catch {} }
+      if (cleanup) cleanup();
       resolve({ code, stdout: out, stderr: err, result });
     });
     if (stdin != null) { child.stdin.write(stdin); child.stdin.end(); } else child.stdin.end();
