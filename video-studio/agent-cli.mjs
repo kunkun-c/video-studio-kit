@@ -2,7 +2,7 @@
 // Used by the Video Studio server (script writing + builds), the tvhead studio app and the preview tools.
 //
 // Pick a CLI with the VS_AGENT env var (claude | devin | gemini | codex). Without it, the first
-// installed one is used, in this order: claude → devin → gemini → codex (claude keeps the original default).
+// installed AND logged-in one is used, in this order: claude → devin → gemini → codex.
 //
 // Two modes:
 //   askAgent(agent, {prompt, system, schema, model, cwd, env, promptDir}) → {text, parsed}
@@ -39,12 +39,35 @@ export const whichBin = (bin) => {
   } catch { return null; }
 };
 
-// Installed agent CLIs, in preference order.
-export function detect() {
-  return ORDER.map((id) => ({ id, bin: whichBin(SPECS[id].bin), label: SPECS[id].label })).filter((a) => a.bin);
+// Quick auth probes so auto-pick skips CLIs that are installed but not logged in.
+// gemini has no reliable local probe — being installed counts as available.
+const AUTH = {
+  claude: { args: ['auth', 'status'], ok: /"loggedIn"\s*:\s*true/i },
+  devin:  { args: ['auth', 'status'], ok: /logged in/i },
+  codex:  { args: ['login', 'status'], ok: /logged in/i },
+};
+export function probeAuth(id, bin) {
+  const spec = AUTH[id]; if (!spec) return !!bin;
+  if (!bin) return false;
+  try {
+    const isShim = WIN && /\.(cmd|bat)$/i.test(bin);
+    const r = spawnSync(isShim ? 'cmd.exe' : bin,
+      isShim ? ['/d', '/s', '/c', q(bin), ...spec.args.map(q)] : spec.args,
+      { encoding: 'utf8', timeout: 15000, windowsHide: true });
+    return spec.ok.test(`${r.stdout || ''}\n${r.stderr || ''}`);
+  } catch { return false; }
 }
 
-// The CLI to use: VS_AGENT/AGENT_CLI env wins, else the first installed in ORDER. null when none found.
+// Installed agent CLIs, in preference order (authed = its login probe passed).
+export function detect() {
+  return ORDER.map((id) => {
+    const bin = whichBin(SPECS[id].bin);
+    return { id, bin, label: SPECS[id].label, authed: probeAuth(id, bin) };
+  }).filter((a) => a.bin);
+}
+
+// The CLI to use: VS_AGENT/AGENT_CLI env wins, else the first installed in ORDER —
+// preferring one that is actually logged in. null when none found.
 export function pick(env = process.env) {
   const want = String(env.VS_AGENT || env.AGENT_CLI || '').toLowerCase();
   if (want) {
@@ -52,8 +75,8 @@ export function pick(env = process.env) {
     if (!s) throw new Error(`unknown agent CLI "${want}" (expected one of: ${ORDER.join(', ')})`);
     return { id: want, bin: whichBin(s.bin) || s.bin, label: s.label };
   }
-  for (const id of ORDER) { const bin = whichBin(SPECS[id].bin); if (bin) return { id, bin, label: SPECS[id].label }; }
-  return null;
+  const found = detect();
+  return found.find((a) => a.authed) || found[0] || null;
 }
 
 export const modelFor = (id, kind) => process.env[`VS_${kind.toUpperCase()}_MODEL`] ?? SPECS[id].models[kind];
