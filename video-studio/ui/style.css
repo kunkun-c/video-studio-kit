@@ -108,7 +108,7 @@ table.scenes { width: 100%; border-collapse: collapse; min-width: 1100px; }
 .notes { flex: 1; overflow-y: auto; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
 .note { padding: 6px 10px; border-radius: 10px; max-width: 92%; }
 .note.user { background: var(--accent-soft); align-self: flex-end; }
-.note.claude { background: #fff; border: 1px solid var(--line); align-self: flex-start; }
+.note.agent { background: #fff; border: 1px solid var(--line); align-self: flex-start; }
 .reply { display: flex; gap: 6px; margin-top: 6px; }
 .reply input { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; background: #fff; }
 .send { width: 34px; border: none; border-radius: 9px; background: var(--accent); color: #fff; font-weight: 700; cursor: pointer; }

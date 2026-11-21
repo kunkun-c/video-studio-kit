@@ -1,4 +1,4 @@
-// Video Studio UI: prompt (always open) → Claude writes the script → you edit/validate → Claude generates the video.
+// Video Studio UI: prompt (always open) → the agent writes the script → you edit/validate → the agent generates the video.
 const $ = (s) => document.querySelector(s);
 const api = async (url, opts = {}) => { const r = await fetch(url, { cache: 'no-store', headers: { 'Content-Type': 'application/json' }, ...opts }); return r.json(); };
 let CAT = null, P = null, slug = new URLSearchParams(location.search).get('p'), dirty = false, saveTimer = null, selected = null;
@@ -145,7 +145,7 @@ function renderProject() {
   ps.disabled = ['building', 'writing-script'].includes(P.status);
   renderScenes(); renderLive();
 }
-const STATUS = { 'writing-script': 'writing script…', 'script-ready': 'script ready: edit & validate', ready: 'script ready: edit & validate', draft: 'draft', 'build-requested': 'waiting for Claude', building: 'generating video…', done: 'done', error: 'error' };
+const STATUS = { 'writing-script': 'writing script…', 'script-ready': 'script ready: edit & validate', ready: 'script ready: edit & validate', draft: 'draft', 'build-requested': 'waiting for the agent', building: 'generating video…', done: 'done', error: 'error' };
 function renderLive() {
   const st = $('#status'); st.textContent = STATUS[P.status] || P.status; st.className = 'status ' + P.status;
   const writing = P.status === 'writing-script';
@@ -193,14 +193,14 @@ $('#voice').onchange = () => { const v = $('#voice').value; P.voice = v === 'non
 $('#music').onchange = () => { P.music = $('#music').value; touch(); };
 $('#addScene').onclick = () => { if (!P) return; const last = P.scenes[P.scenes.length - 1]; const s0 = last ? +last.end : 0; P.scenes.push({ n: P.scenes.length + 1, start: s0, end: +(s0 + 3).toFixed(1), tool: last ? last.tool : '', visual: '', narration: '', onscreen: '', sound: '', notes: '' }); renderScenes(); touch(); };
 $('#build').onclick = async () => {
-  if (!confirm('Generate the video from this script? Claude Code will render every scene (this can take a while).')) return;
+  if (!confirm('Generate the video from this script? The agent will render every scene (this can take a while).')) return;
   if (dirty) await save();
   try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch {}
   P = await api(`/api/project/${P.slug}/build`, { method: 'POST', body: '{}' }); renderScenes(); renderLive();
 };
 $('#stop').onclick = async () => { P = await api(`/api/project/${P.slug}/stop`, { method: 'POST', body: '{}' }); renderScenes(); renderLive(); };
 
-// live updates while Claude writes or builds (never overwrite what you're typing)
+// live updates while the agent writes or builds (never overwrite what you're typing)
 let lastStatus = null;
 setInterval(async () => {
   if (!P || dirty) return;
