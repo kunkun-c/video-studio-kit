@@ -79,8 +79,12 @@ export function extractJson(text) {
 // npm-installed CLIs are .cmd/.bat shims on Windows and can only be spawned through cmd.exe.
 // The args joined here are fixed flags and paths only — never free prompt text (that goes via stdin or a file).
 const q = (a) => (/[\s"']/.test(a) ? `"${String(a).replace(/"/g, '')}"` : a);
+// WSL interop: a Windows .exe spawned from Linux node receives POSIX args verbatim; /mnt/<drive>/...
+// paths must be rewritten to their drive-letter form so the exe can open them.
+const winPath = (p) => { const m = /^\/mnt\/([a-zA-Z])\/(.*)$/.exec(String(p)); return m ? `${m[1].toUpperCase()}:\\${m[2].replace(/\//g, '\\')}` : p; };
 function sh(bin, args, opts) {
   if (WIN && /\.(cmd|bat)$/i.test(bin)) return spawn('cmd.exe', ['/d', '/s', '/c', [q(bin), ...args.map(q)].join(' ')], opts);
+  if (!WIN && /\.exe$/i.test(bin)) return spawn(bin, args.map(winPath), { ...opts, cwd: opts.cwd ? winPath(opts.cwd) : opts.cwd });
   return spawn(bin, args, opts);
 }
 
@@ -108,7 +112,7 @@ function spawnArgs(id, mode, { model, system, schema, prompt, promptDir, emptyMc
     case 'devin': {
       const f = promptFile(prompt, promptDir);
       const pm = mode === 'chat' ? 'auto' : (process.env.VS_PERMISSION_MODE || 'dangerous');
-      return { args: ['-p', '--model', model, '--permission-mode', pm, '--respect-workspace-trust=false', '--prompt-file', f] };
+      return { args: ['-p', ...(model ? ['--model', model] : []), '--permission-mode', pm, '--respect-workspace-trust=false', '--prompt-file', f] };
     }
     case 'gemini': {
       const args = [...(model ? ['-m', model] : [])];
@@ -121,9 +125,9 @@ function spawnArgs(id, mode, { model, system, schema, prompt, promptDir, emptyMc
     }
     default: { // claude
       const args = mode === 'chat'
-        ? ['-p', '--model', model, '--output-format', 'json', '--tools', '',
+        ? ['-p', ...(model ? ['--model', model] : []), '--output-format', 'json', '--tools', '',
           ...(system ? ['--system-prompt', system] : []), ...(schema ? ['--json-schema', JSON.stringify(schema)] : []), ...lean(emptyMcp)]
-        : ['-p', '--model', model, '--output-format', 'stream-json', '--verbose',
+        : ['-p', ...(model ? ['--model', model] : []), '--output-format', 'stream-json', '--verbose',
           '--tools', 'Bash,Read,Write,Edit,Glob,Grep', '--allowedTools', 'Bash,Read,Write,Edit,Glob,Grep',
           ...(addDir ? ['--add-dir', addDir] : []), ...lean(emptyMcp)];
       return { args, stdin: prompt };
