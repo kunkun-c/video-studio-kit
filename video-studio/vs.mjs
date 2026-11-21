@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { writeScript, buildProject, stopBuild } from './agent.mjs';
+import { writeScript, buildProject, stopBuild, suggestStyles } from './agent.mjs';
 const MANUAL = process.env.VS_MANUAL === '1'; // 1 = an interactive agent session builds (vs.mjs wait)
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -69,6 +69,11 @@ async function handle(req, res) {
   if (p === '/api/projects') {
     const list = fs.readdirSync(PROJECTS).filter((d) => fs.existsSync(pfile(d))).map((d) => { const x = load(d); return { slug: x.slug, title: x.title, status: x.status, updatedAt: x.updatedAt }; });
     return json(res, 200, list.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')));
+  }
+  if (p === '/api/suggest-style' && req.method === 'POST') {
+    const b = await body(req); const prompt = String(b.prompt || '').trim();
+    if (!prompt) return json(res, 400, { error: 'write a prompt' });
+    try { return json(res, 200, { suggestions: await suggestStyles(prompt, b.format || '9:16') }); } catch (e) { return json(res, 400, { error: e.message }); }
   }
   if (p === '/api/script' && req.method === 'POST') {
     const b = await body(req); const prompt = String(b.prompt || '').trim();

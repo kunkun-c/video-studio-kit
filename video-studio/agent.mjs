@@ -68,6 +68,35 @@ export async function writeScript(prompt, format = '9:16', style = null) {
   return slug;
 }
 
+const SUGGEST_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['suggestions'],
+  properties: {
+    suggestions: { type: 'array', minItems: 2, maxItems: 4, items: { type: 'object', additionalProperties: false, required: ['tool', 'style', 'why'],
+      properties: { tool: { type: 'string' }, style: { type: 'string' }, why: { type: 'string' } } } },
+  },
+};
+
+// The "suggest the style" switch: the agent reads the idea and proposes a few catalogue styles to pick from.
+export async function suggestStyles(prompt, format = '9:16') {
+  const agent = needAgent();
+  const c = JSON.parse(fs.readFileSync(path.join(ROOT, 'catalog.json'), 'utf8'));
+  const list = [];
+  for (const t of c.tools) for (const s of t.styles)
+    list.push(`${t.id}/${s.id} — ${s.name === t.name ? t.name : `${s.name} (${t.name})`} · ${t.what || ''} · ${t.speed || ''}`);
+  const system = 'You are a video style director. Given a video idea, recommend the best-matching animation styles from a fixed catalogue. Return only the JSON requested.';
+  const input = `The user's idea:\n"""${prompt}"""\nFormat: ${format}.\n\nCatalogue (tool/style — name · about · speed):\n${list.join('\n')}\n\nRecommend the 3 styles that fit this idea best — mix one safe pick with bolder ones. For each: tool (id before /), style (id after /), why (one short sentence for the user).`;
+  const r = await askAgent(agent, { prompt: input, system, schema: SUGGEST_SCHEMA, model: modelFor(agent.id, 'script'), cwd: ROOT, promptDir: ROOT, emptyMcp: emptyMcp() });
+  const d = r.parsed || extractJson(r.text);
+  const out = [];
+  for (const s of d?.suggestions || []) {
+    const t = c.tools.find((t) => t.id === s.tool), st = t?.styles.find((x) => x.id === s.style);
+    if (!st) continue;
+    out.push({ tool: t.id, style: st.id, name: st.name === t.name ? t.name : `${st.name} (${t.name})`, why: String(s.why || '').slice(0, 200), example: st.example && fs.existsSync(path.join(ROOT, st.example)) ? st.example : null });
+  }
+  if (!out.length) throw new Error(`${agent.label} suggested no usable styles`);
+  return out;
+}
+
 export function buildProject(slug) {
   const agent = needAgent();
   if (running.has(slug)) return;

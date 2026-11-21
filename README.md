@@ -44,7 +44,7 @@ You can run it again safely.
 ## Use
 
 **In the app.** On Windows, double-click `Start Video Studio.cmd`. On macOS or Linux, run `sh start-studio.sh`. It opens http://localhost:4790.
-1. Pick a style on the left. The viewer plays its example.
+1. Pick a style on the left. The viewer plays its example. Or flip the **suggest** switch by the prompt box: the agent reads your idea, recommends a few styles with a one-line reason each, and you approve one before the script is written.
 2. Write your prompt and press **Write the script**. The whole video uses the style you picked.
 3. Edit the script table: times, what we see, narration, on-screen text, sound, notes.
 4. Choose the voice-over (off by default) and the music.

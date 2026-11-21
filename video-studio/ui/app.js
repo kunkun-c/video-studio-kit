@@ -62,9 +62,8 @@ $('#useInScene').onclick = (e) => {
 };
 
 // ---------- prompt → script ----------
-$('#promptForm').onsubmit = async (e) => {
-  e.preventDefault();
-  const prompt = $('#prompt').value.trim(); if (!prompt) { $('#prompt').focus(); return; }
+async function writeScriptNow(prompt) {
+  $('#suggestPanel').hidden = true;
   $('#writeScript').disabled = true;
   const r = await api('/api/script', { method: 'POST', body: JSON.stringify({ prompt, format: $('#newFormat').value, style: selected ? `${selected.tool}/${selected.style}` : null }) });
   $('#writeScript').disabled = false;
@@ -73,6 +72,31 @@ $('#promptForm').onsubmit = async (e) => {
   history.replaceState(null, '', '?p=' + r.slug); slug = r.slug;
   P = await api('/api/project/' + slug); await loadProjects(); renderProject();
   $('#project').scrollIntoView({ behavior: 'smooth' });
+}
+function renderSuggestions(list, prompt) {
+  const grid = $('#suggestGrid'); grid.innerHTML = '';
+  for (const s of list) {
+    const el = document.createElement('div'); el.className = 'sug';
+    el.innerHTML = `${s.example ? `<video src="/${s.example}" muted loop playsinline></video>` : `<div class="sug-novid">no preview yet</div>`}
+      <div class="sug-body"><b>${esc(s.name)}</b><p>${esc(s.why)}</p>
+      <button class="primary small">Use this style</button></div>`;
+    const v = el.querySelector('video'); if (v) { el.onmouseenter = () => v.play().catch(() => {}); el.onmouseleave = () => v.pause(); }
+    el.querySelector('button').onclick = () => { select(s.tool, s.style); $('#suggestPanel').hidden = true; writeScriptNow(prompt); };
+    grid.appendChild(el);
+  }
+  $('#suggestPanel').hidden = false;
+  $('#suggestPanel').scrollIntoView({ behavior: 'smooth' });
+}
+$('#suggestDismiss').onclick = () => { $('#suggestPanel').hidden = true; };
+$('#promptForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const prompt = $('#prompt').value.trim(); if (!prompt) { $('#prompt').focus(); return; }
+  if (!$('#suggestStyle').checked) return writeScriptNow(prompt);
+  $('#writeScript').disabled = true; $('#writeScript').textContent = 'Asking the agent…';
+  const r = await api('/api/suggest-style', { method: 'POST', body: JSON.stringify({ prompt, format: $('#newFormat').value }) });
+  $('#writeScript').disabled = false; $('#writeScript').textContent = 'Write the script';
+  if (r.error) return alert(r.error);
+  renderSuggestions(r.suggestions || [], prompt);
 };
 $('#prompt').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('#promptForm').requestSubmit(); });
 
