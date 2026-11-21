@@ -70,8 +70,16 @@
             <select id="format"><option>9:16</option><option>16:9</option><option>1:1</option></select>
             <select id="voice">
               <option value="none">No voice-over</option>
-              <option value="am_michael">Voice-over: Michael</option><option value="am_adam">Voice-over: Adam</option>
-              <option value="bm_george">Voice-over: George (UK)</option><option value="am_onyx">Voice-over: Onyx</option>
+              <optgroup label="English (Kokoro)">
+                <option value="am_michael">Voice-over: Michael</option><option value="am_adam">Voice-over: Adam</option>
+                <option value="bm_george">Voice-over: George (UK)</option><option value="am_onyx">Voice-over: Onyx</option>
+              </optgroup>
+              <optgroup label="English (neural)">
+                <option value="edge:en-US-AriaNeural">Voice-over: Aria</option><option value="edge:en-GB-RyanNeural">Voice-over: Ryan (UK)</option>
+              </optgroup>
+              <optgroup label="Tiếng Việt (neural)">
+                <option value="edge:vi-VN-HoaiMyNeural">Giọng đọc: Hoài My (nữ)</option><option value="edge:vi-VN-NamMinhNeural">Giọng đọc: Nam Minh (nam)</option>
+              </optgroup>
             </select>
             <select id="music">
               <option value="lofi">Music: lo-fi</option><option value="ambient">Music: ambient</option><option value="upbeat">Music: upbeat</option><option value="epic">Music: epic</option><option value="none">No music</option>

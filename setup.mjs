@@ -91,7 +91,7 @@ const tts = path.join(ROOT, 'studio', 'tts'), venvPy = path.join(tts, '.venv', W
 if (SKIP_VOICE) warn('skipped (--skip-voice): voice-over will be unavailable');
 else {
   if (!fs.existsSync(venvPy)) run(PY, ['-m', 'venv', path.join(tts, '.venv')]);
-  run(venvPy, ['-m', 'pip', 'install', '-q', 'kokoro-onnx', 'soundfile', 'espeakng-loader']).status === 0 ? ok('kokoro-onnx installed') : bad('pip install failed');
+  run(venvPy, ['-m', 'pip', 'install', '-q', 'kokoro-onnx', 'soundfile', 'espeakng-loader', 'edge-tts']).status === 0 ? ok('kokoro-onnx + edge-tts installed') : bad('pip install failed');
   const base = 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/';
   for (const f of ['kokoro-v1.0.onnx', 'voices-v1.0.bin']) {
     const dst = path.join(tts, f); if (fs.existsSync(dst) && fs.statSync(dst).size > 1e6) { ok(`${f} (already there)`); continue; }

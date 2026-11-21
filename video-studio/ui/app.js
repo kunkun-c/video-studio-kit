@@ -162,7 +162,7 @@ $('#projectStyle').onchange = () => {
 function renderProject() {
   $('#empty').hidden = !!P; $('#proj').hidden = !P;
   if (!P) return;
-  $('#title').value = P.title || ''; $('#format').value = P.format || '9:16'; $('#voice').value = P.voice?.on === true ? P.voice.voice : 'none'; $('#music').value = P.music && P.music !== 'auto' ? P.music : 'lofi';
+  $('#title').value = P.title || ''; $('#format').value = P.format || '9:16'; $('#voice').value = P.voice?.on === true ? (P.voice.engine === 'edge' ? 'edge:' : '') + P.voice.voice : 'none'; $('#music').value = P.music && P.music !== 'auto' ? P.music : 'lofi';
   $('#ideaLine').textContent = (P.styleName ? 'Style: ' + P.styleName + ' · ' : '') + (P.idea ? 'Prompt: ' + P.idea : '');
   const ps = $('#projectStyle'), cur = P.style || P.scenes.find((s) => s.tool)?.tool || '';
   ps.innerHTML = toolOptions(cur).replace('— pick —', 'Style: pick one'); ps.value = cur;
@@ -213,7 +213,13 @@ async function save() {
 }
 $('#title').oninput = () => { P.title = $('#title').value; touch(); };
 $('#format').onchange = () => { P.format = $('#format').value; touch(); };
-$('#voice').onchange = () => { const v = $('#voice').value; P.voice = v === 'none' ? { engine: 'kokoro', voice: 'none', on: false } : { engine: 'kokoro', voice: v, on: true }; touch(); };
+$('#voice').onchange = () => {
+  const v = $('#voice').value;
+  if (v === 'none') P.voice = { engine: 'kokoro', voice: 'none', on: false };
+  else if (v.startsWith('edge:')) P.voice = { engine: 'edge', voice: v.slice(5), on: true };
+  else P.voice = { engine: 'kokoro', voice: v, on: true };
+  touch();
+};
 $('#music').onchange = () => { P.music = $('#music').value; touch(); };
 $('#addScene').onclick = () => { if (!P) return; const last = P.scenes[P.scenes.length - 1]; const s0 = last ? +last.end : 0; P.scenes.push({ n: P.scenes.length + 1, start: s0, end: +(s0 + 3).toFixed(1), tool: last ? last.tool : '', visual: '', narration: '', onscreen: '', sound: '', notes: '' }); renderScenes(); touch(); };
 $('#build').onclick = async () => {
